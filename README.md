@@ -5,28 +5,23 @@ This file provides guidance while working with code in this repository.
 ## Quick Commands
 
 ### Setup
-- **Build project**: `gradle clean install`
-- **Run locally**: `gradle spring-boot:run`
-- **Run with specific profile**: `gradle spring-boot:run -Dspring-boot.run.profiles=local`
-- **Run tests**: `gradle test`
-- **Run integration tests**: `gradle verify -Pintegration-test`
+- **Build project**: `./gradlew clean build`
+- **Run locally**: `./gradlew bootRun`
+- **Run with specific profile**: `./gradlew bootRun --args='--spring.profiles.active=local'`
+- **Run tests**: `./gradlew test`
+- **Run integration tests**: `./gradlew integrationTest`
 
 ### Development
-- **Start dev server**: `gradle spring-boot:run -Dspring-boot.run.profiles=dev`
-- **Start with debug port (5005)**: `gradle spring-boot:run -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"`
-- **Build jar**: `gradle clean package -DskipTests`
-- **Run jar**: `java -jar target/app.jar --spring.profiles.active=prod`
+- **Start dev server**: `./gradlew bootRun --args='--spring.profiles.active=dev'`
+- **Start with debug port (5005)**: `./gradlew bootRun --debug-jvm`
+- **Build jar**: `./gradlew clean bootJar -x test`
+- **Run jar**: `java -jar build/libs/<app-name>.jar --spring.profiles.active=prod`
 
 ### Code Quality
-- **Checkstyle**: `gradle checkstyle:check`
-- **Spotless (format code)**: `gradle spotless:apply`
-- **Lint**: `gradle pmd:check`
-- **Test with coverage**: `gradle test jacoco:report`
-
-### Database (Flyway)
-- **Run migrations**: `gradle liquibase:update` or `gradle flyway:migrate`
-- **Revert migration**: `gradle liquibase:rollback` or `gradle flyway:undo`
-- **Generate changelog (Liquibase)**: `gradle liquibase:generateChangeLog`
+- **Checkstyle**: `./gradlew checkstyleMain checkstyleTest`
+- **Spotless (format code)**: `./gradlew spotlessApply`
+- **Lint**: `./gradlew pmdMain pmdTest`
+- **Test with coverage**: `./gradlew test jacocoTestReport`
 
 ---
 
@@ -60,9 +55,9 @@ Request flow follows: **Controller → Service → Repository → Entity/DB**.
 ├─────────────────────┤
 │  APPLICATION        │  ← Services
 ├─────────────────────┤
-│  INFRASTRUCTURE     │  ← Persistence, Repository, DB
+│  INFRASTRUCTURE     │  ← Persistence, DB
 ├─────────────────────┤
-│  DOMAIN             │  ← Entities
+│  DOMAIN             │  ← Core Models
 └─────────────────────┘
 ```
 
