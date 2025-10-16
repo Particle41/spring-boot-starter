@@ -4,6 +4,7 @@ import com.particle41.springbootstarter.modules.user.domain.model.User
 import com.particle41.springbootstarter.modules.user.domain.repository.UserRepository
 import com.particle41.springbootstarter.modules.user.infrastructure.mapper.UserMapper
 import org.springframework.stereotype.Repository
+import java.util.UUID
 
 @Repository
 class UserRepositoryImpl(
@@ -16,12 +17,12 @@ class UserRepositoryImpl(
         return UserMapper.toDomain(savedEntity)
     }
 
-    override fun findById(id: Long): User? =
+    override fun findById(id: UUID): User? =
         springDataRepo.findById(id).map(UserMapper::toDomain).orElse(null)
 
     override fun findAll(): List<User> =
         springDataRepo.findAll().map(UserMapper::toDomain)
 
-    override fun delete(id: Long) =
+    override fun delete(id: UUID) =
         springDataRepo.deleteById(id)
 }

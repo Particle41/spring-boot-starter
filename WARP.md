@@ -1,156 +1,395 @@
-# WARP.md
+# Spring Boot Starter - Warp Documentation
 
-This file provides guidance to WARP (warp.dev) when working with code in this repository.
+A comprehensive Spring Boot application built with Kotlin following Clean Architecture principles, featuring a complete User management system with REST API, JPA integration, and comprehensive testing.
 
-## Quick Commands
+## 🏗️ Architecture Overview
 
-### Development & Testing
-- **Build project**: `./gradlew clean build`
-- **Run locally**: `./gradlew bootRun`
-- **Run with debug (port 5005)**: `./gradlew bootRun --debug-jvm`
-- **Run tests**: `./gradlew test`
-- **Run integration tests**: `./gradlew integrationTest`
-- **Run single test class**: `./gradlew test --tests "*UserServiceTest"`
-- **Test with coverage**: `./gradlew test jacocoTestReport`
+This application implements **Clean Architecture** with the following layers:
 
-### Profiles & Environment
-- **Dev profile**: `./gradlew bootRun --args='--spring.profiles.active=dev'`
-- **Local profile**: `./gradlew bootRun --args='--spring.profiles.active=local'`
-- **Build jar**: `./gradlew clean bootJar -x test`
+- **Presentation Layer**: REST controllers, DTOs, and presentation mappers
+- **Application Layer**: Business services
+- **Domain Layer**: Core business entities, domain models, and repository interfaces
+- **Infrastructure Layer**: JPA entities, repository implementations, and external integrations
 
-### Code Quality 
-- **Format code**: `./gradlew spotlessApply`
-- **Checkstyle**: `./gradlew checkstyleMain checkstyleTest`
-- **PMD lint**: `./gradlew pmdMain pmdTest`
-
-## Architecture Overview
-
-This Spring Boot Kotlin application implements **Clean Architecture** with 4 distinct layers and strict dependency rules.
-
-### Clean Architecture Layers
+### Project Structure
 
 ```
-┌─────────────────────┐
-│  PRESENTATION       │  ← Controllers, DTOs, Validation
-├─────────────────────┤
-│  APPLICATION        │  ← Services, Use Cases  
-├─────────────────────┤
-│  INFRASTRUCTURE     │  ← JPA Entities, Repository Impl
-├─────────────────────┤
-│  DOMAIN             │  ← Core Models, Repository Interfaces
-└─────────────────────┘
+src/
+├── main/kotlin/com/particle41/springbootstarter/
+│   ├── AppApplication.kt                              # Main Spring Boot application
+│   ├── common/
+│   │   ├── advices/GlobalExceptionHandler.kt         # Global error handling
+│   │   └── exceptions/
+│   │       ├── DomainException.kt                    # Base domain exception
+│   │       └── DomainNotFoundException.kt            # Base not found exception
+│   └── modules/user/
+│       ├── application/
+│       │   ├── UserService.kt                        # Service interface
+│       │   └── UserServiceImpl.kt                    # Service implementation
+│       ├── domain/
+│       │   ├── model/User.kt                         # Core domain model
+│       │   ├── repository/UserRepository.kt          # Repository interface
+│       │   └── exception/UserNotFoundException.kt     # Domain-specific exceptions
+│       ├── infrastructure/
+│       │   ├── entity/UserEntity.kt                  # JPA entity
+│       │   ├── mapper/UserMapper.kt                  # Infrastructure mapper
+│       │   └── repository/
+│       │       ├── SpringDataUserRepository.kt       # Spring Data JPA interface
+│       │       └── UserRepositoryImpl.kt             # Repository implementation
+│       └── presentation/
+│           ├── controller/UserController.kt          # REST controller
+│           ├── dto/
+│           │   ├── UserRequest.kt                    # Input DTO with validation
+│           │   └── UserResponse.kt                   # Output DTO
+│           └── mapper/UserMapper.kt                  # Presentation mapper
+├── test/kotlin/                                      # Unit tests
+└── integrationTest/kotlin/                           # Integration tests
 ```
 
-**Critical Rule**: Dependencies flow inward only. Domain layer has ZERO framework dependencies.
+## 📊 Core Components
 
-### Feature Organization
+### Domain Model
 
-Each business domain follows this structure:
-```
-modules/{domain}/
-├── domain/                    
-│   ├── {Entity}.kt            # Domain models (framework-free)
-│   ├── {Entity}Repository.kt  # Repository interfaces  
-│   └── exception/             # Domain exceptions
-├── application/               
-│   ├── {Entity}Service.kt     # Service interfaces
-│   └── {Entity}ServiceImpl.kt # Service implementations
-├── infrastructure/            
-│   ├── persistence/
-│   │   ├── {Entity}Entity.kt       # JPA entities
-│   │   ├── SpringData{Entity}Repository.kt # Spring Data JPA
-│   │   └── {Entity}RepositoryImpl.kt # Domain repository impl
-│   └── mapper/
-│       └── {Entity}Mapper.kt       # Domain ↔ Entity mapping
-└── presentation/              
-    ├── controller/
-    │   └── {Entity}Controller.kt   # REST endpoints
-    ├── dto/
-    │   ├── {Entity}Request.kt      # Input DTOs with validation
-    │   └── {Entity}Response.kt     # Output DTOs
-    └── mapper/
-        └── {Entity}DtoMapper.kt    # Domain ↔ DTO mapping
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/modules/user/domain/model/User.kt start=6
+data class User(
+    val id: UUID,
+    val name: String,
+    val email: String,
+    val createdAt: LocalDateTime,
+    val updatedAt: LocalDateTime
+)
 ```
 
-### Current Implementation: User Feature
+**Key Features:**
+- Immutable data class following domain-driven design
+- UUID-based identification for distributed systems
+- Automatic timestamp management
 
-- **Domain**: `User.kt` (pure Kotlin data class), `UserRepository.kt` (interface)
-- **Application**: `UserService.kt` + `UserServiceImpl.kt` with `@Transactional`
-- **Infrastructure**: `UserEntity.kt` (@Entity), `SpringDataUserRepository.kt` (JpaRepository), `UserRepositoryImpl.kt`  
-- **Presentation**: `UserController.kt` (@RestController), `UserRequest.kt`/`UserResponse.kt` (DTOs), `UserDtoMapper.kt`
+### REST API Controller
 
-## Key Patterns & Standards
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/modules/user/presentation/controller/UserController.kt start=20
+@PostMapping
+fun create(@Valid @RequestBody request: UserRequest): ResponseEntity<UserResponse> {
+    val user = userMapper.toDomain(request)
+    val createdUser = userService.create(user)
+    return ResponseEntity.status(HttpStatus.CREATED).body(userMapper.toResponse(createdUser))
+}
+```
 
-### Domain Layer Rules
-- **Pure Kotlin**: No Spring annotations, JPA annotations, or framework imports
-- **Immutable Models**: Use `data class` with `val` properties
-- **Repository Interfaces**: Define contracts without implementation details
-- **Business Exceptions**: Extend `RuntimeException` with meaningful messages
+**API Endpoints:**
+- `POST /api/users` - Create new user
+- `GET /api/users/{id}` - Fetch user by ID
+- `GET /api/users` - Fetch all users
+- `PUT /api/users/{id}` - Update existing user
+- `DELETE /api/users/{id}` - Delete user
 
-### Infrastructure Layer Rules  
-- **JPA Entities**: Use `@Entity`, `@Table`, `@Column` appropriately
-- **Spring Data**: Extend `JpaRepository<Entity, ID>`
-- **Repository Implementations**: Implement domain interfaces, use static mappers
-- **Static Mappers**: `object UserMapper` with `toDomain()` and `toEntity()` methods
+### Business Service Layer
 
-### Application Layer Rules
-- **Service Interfaces + Implementations**: Separate concerns clearly
-- **Transaction Management**: Use `@Transactional` for write operations
-- **Exception Propagation**: Let domain exceptions bubble up to global handler
-- **Business Logic**: Orchestrate domain objects and repository calls
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/modules/user/application/UserServiceImpl.kt start=16
+override fun fetchOne(id: UUID): User =
+    userRepository.findById(id) ?: throw UserNotFoundException(id.toString())
 
-### Presentation Layer Rules
-- **REST Controllers**: Use `@RestController` and `@RequestMapping`
-- **DTO Validation**: Apply `@Valid` with Jakarta validation annotations (`@NotBlank`, `@Email`)
-- **HTTP Status Codes**: Return appropriate status (201 for create, 204 for delete, etc.)
-- **Response Mapping**: Always convert domain objects to DTOs before returning
+@Transactional
+override fun update(id: UUID, user: User): User {
+    val existingUser = userRepository.findById(id) ?: throw UserNotFoundException(id.toString())
+    val updatedUser = existingUser.copy(
+        name = user.name,
+        email = user.email,
+        updatedAt = LocalDateTime.now()
+    )
+    return userRepository.save(updatedUser)
+}
+```
 
-### Exception Handling
-- **Global Handler**: `GlobalExceptionHandler` with `@RestControllerAdvice`
-- **Domain Exceptions**: Create specific exceptions like `UserNotFoundException`
-- **Validation Errors**: Handle `MethodArgumentNotValidException` for DTO validation
-- **Standard Responses**: Consistent error response format
+**Features:**
+- Transactional operations for data consistency
+- Domain exception handling
+- Business logic encapsulation
 
-## Development Workflow
+### Data Validation
 
-### Adding a New Feature Domain
-1. **Domain Layer**: Create model, repository interface, domain exceptions
-2. **Application Layer**: Create service interface and implementation with `@Transactional`
-3. **Infrastructure Layer**: Create JPA entity, Spring Data repository, implementation, static mapper
-4. **Presentation Layer**: Create controller, request/response DTOs, DTO mapper  
-5. **Testing**: Unit tests for services, integration tests for controllers
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/modules/user/presentation/dto/UserRequest.kt start=6
+data class UserRequest(
+    @field:NotBlank(message = "Name must not be blank")
+    val name: String,
 
-### Testing Strategy
-- **Unit Tests**: Mock dependencies, test business logic in isolation
-- **Integration Tests**: Test full HTTP flow with `@SpringBootTest`
-- **Test Structure**: Co-located with source code, use `Test` suffix
-- **Mocking**: Use `@Mock` and `@InjectMocks` with MockitoAnnotations
+    @field:NotBlank(message = "Email must not be blank")
+    @field:Email(message = "Invalid email format")
+    val email: String
+)
+```
 
-### Database & Configuration
-- **H2 In-Memory**: Default database for development/testing
-- **JPA/Hibernate**: Auto DDL with `spring.jpa.hibernate.ddl-auto=update`
-- **H2 Console**: Available at `/h2-console` for debugging
-- **Profiles**: Support for `dev`, `local`, `prod` profiles
+**Validation Rules:**
+- Name: Cannot be blank
+- Email: Must be valid email format and not blank
 
-## Code Quality Requirements
+## 🗄️ Database Configuration
 
-### Kotlin Standards
-- **Data Classes**: Use for immutable domain models and DTOs
-- **Null Safety**: Leverage Kotlin's null safety, use `?` appropriately  
-- **Extension Functions**: Use when appropriate for readability
-- **Coroutines**: Consider for async operations (not currently used)
+### H2 In-Memory Database
 
-### Dependency Injection
-- **Constructor Injection**: Standard Spring Boot pattern with `val` properties
-- **Component Scanning**: Use `@Service`, `@Repository`, `@Component` appropriately
-- **Interface Segregation**: Keep interfaces focused and cohesive
+```properties path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/resources/application.properties start=1
+spring.application.name=springbootstarter
+# H2 database config
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.datasource.driver-class-name=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+# JPA
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect
+# H2 Console
+spring.h2.console.enabled=true
+spring.h2.console.path=/h2-console
+```
 
-### Performance Considerations
-- **JPA Efficiency**: Avoid N+1 queries, use appropriate fetch strategies
-- **Transaction Scope**: Keep transactions short, use read-only when possible
-- **H2 Limitations**: Remember this is in-memory database for development
+### JPA Entity
 
-### Security & Validation
-- **Input Validation**: Use Jakarta validation in DTOs with meaningful messages
-- **SQL Injection**: Spring Data JPA provides protection automatically
-- **Error Messages**: Generic user messages, detailed logs for developers
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/modules/user/infrastructure/entity/UserEntity.kt start=16
+@Entity
+@Table(name = "users")
+data class UserEntity(
+    @Id
+    val id: UUID = UUID.randomUUID(),
+
+    @Column(nullable = false)
+    var name: String,
+
+    @Column(nullable = false, unique = true)
+    var email: String,
+
+    @Column(nullable = false, updatable = false)
+    var createdAt: LocalDateTime = LocalDateTime.now(),
+
+    @Column(nullable = false)
+    var updatedAt: LocalDateTime = LocalDateTime.now()
+)
+```
+
+**Database Features:**
+- Automatic UUID generation
+- Email uniqueness constraint
+- Timestamp management with JPA lifecycle hooks
+- H2 console available at `/h2-console`
+
+## 🔧 Build Configuration
+
+### Gradle (Kotlin DSL)
+
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/build.gradle.kts start=1
+plugins {
+    kotlin("jvm") version "1.9.25"
+    kotlin("plugin.spring") version "1.9.25"
+    id("org.springframework.boot") version "3.5.3"
+    id("io.spring.dependency-management") version "1.1.7"
+    kotlin("plugin.jpa") version "1.9.25"
+}
+
+group = "com.particle41"
+version = "0.0.1-SNAPSHOT"
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+```
+
+**Key Dependencies:**
+- Spring Boot 3.5.3
+- Spring Data JPA
+- Spring Boot Actuator
+- H2 Database
+- Jackson Kotlin Module
+- Bean Validation (jakarta.validation)
+
+## 🧪 Testing Strategy
+
+### Unit Tests
+
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/test/kotlin/com/particle41/springbootstarter/modules/user/application/UserServiceTest.kt start=41
+@Test
+fun `fetchOne returns user when found`() {
+    whenever(userRepository.findById(sampleId)).thenReturn(sampleUser)
+
+    val result = userService.fetchOne(sampleId)
+
+    assertEquals(sampleUser, result)
+}
+
+@Test
+fun `fetchOne throws UserNotFoundException when not found`() {
+    whenever(userRepository.findById(sampleId)).thenReturn(null)
+
+    assertThrows(UserNotFoundException::class.java) {
+        userService.fetchOne(sampleId)
+    }
+}
+```
+
+**Unit Testing Features:**
+- Mockito with Kotlin extensions
+- JUnit 5 test framework
+- Complete service layer coverage
+- Exception scenario testing
+
+### Integration Tests
+
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/integrationTest/kotlin/com/particle41/springbootstarter/modules/user/presentation/controller/UserControllerIntegrationTest.kt start=36
+@Test
+fun `POST create user returns 201`() {
+    val request = UserRequest(name = "Alice", email = "alice@example.com")
+    val json = objectMapper.writeValueAsString(request)
+
+    mockMvc.perform(
+        post("/api/users")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(json)
+    )
+        .andExpect(status().isCreated)
+        .andExpected(jsonPath("$.name").value("Alice"))
+        .andExpect(jsonPath("$.email").value("alice@example.com"))
+}
+```
+
+**Integration Testing Features:**
+- End-to-end API testing with MockMvc
+- Full Spring context loading
+- Database integration testing
+- Validation error testing
+- HTTP status code verification
+
+### Test Configuration
+
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/build.gradle.kts start=54
+sourceSets {
+    val integrationTest by creating {
+        kotlin.srcDir("src/integrationTest/kotlin")
+        resources.srcDir("src/integrationTest/resources")
+        compileClasspath += sourceSets["main"].output + configurations["testRuntimeClasspath"]
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+tasks.register<Test>("integrationTest") {
+    description = "Runs integration tests"
+    group = "verification"
+    testClassesDirs = sourceSets["integrationTest"].output.classesDirs
+    classpath = sourceSets["integrationTest"].runtimeClasspath
+    shouldRunAfter(tasks.test)
+}
+```
+
+## 🚀 Quick Commands
+
+### Development Workflow
+
+```bash
+# Setup and Build
+./gradlew clean build          # Clean and build project
+./gradlew bootRun             # Run application locally
+./gradlew bootRun --args='--spring.profiles.active=local'  # Run with specific profile
+
+# Testing
+./gradlew test                # Run unit tests
+./gradlew integrationTest     # Run integration tests
+./gradlew check              # Run all tests and quality checks
+```
+
+### Development URLs
+
+- **Application**: http://localhost:8080
+- **H2 Console**: http://localhost:8080/h2-console
+- **Actuator Health**: http://localhost:8080/actuator/health
+
+## 🔍 Error Handling
+
+### Exception Hierarchy
+
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/common/exceptions/DomainException.kt start=7
+abstract class DomainException(
+    message: String,
+    cause: Throwable? = null
+) : RuntimeException(message, cause)
+```
+
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/common/exceptions/DomainNotFoundException.kt start=6
+abstract class DomainNotFoundException(
+    entityName: String,
+    identifier: String,
+    cause: Throwable? = null
+) : DomainException("$entityName with id=$identifier not found", cause)
+```
+
+### Global Exception Handler
+
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/common/advices/GlobalExceptionHandler.kt start=14
+@ExceptionHandler(DomainNotFoundException::class)
+fun handleDomainNotFound(ex: DomainNotFoundException): ResponseEntity<String> {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.message)
+}
+
+@ExceptionHandler(DomainException::class)
+fun handleDomainException(ex: DomainException): ResponseEntity<String> {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.message)
+}
+
+@ExceptionHandler(MethodArgumentNotValidException::class)
+fun handleValidationException(ex: MethodArgumentNotValidException): ResponseEntity<Map<String, String?>> {
+    val errors = ex.bindingResult.fieldErrors.associate { error ->
+        error.field to error.defaultMessage
+    }
+    return ResponseEntity.badRequest().body(errors)
+}
+```
+
+**Error Handling Features:**
+- Hierarchical domain exception handling
+- Bean validation error mapping
+- Consistent HTTP status codes
+- Structured error responses
+
+## 📋 Development Standards
+
+### Code Quality Checklist
+
+- [ ] **Clean Architecture**: Proper layer separation maintained
+- [ ] **Validation**: All DTOs use `@Valid` annotations
+- [ ] **Mapping**: No inline DTO construction in controllers
+- [ ] **Testing**: Unit and integration tests covering all scenarios
+- [ ] **Formatting**: Code properly formatted and consistent
+- [ ] **Transactions**: Database operations properly transactional
+- [ ] **Exception Handling**: Domain exceptions properly propagated
+
+### Architecture Principles
+
+1. **Dependency Inversion**: Domain layer has no dependencies on infrastructure
+2. **Single Responsibility**: Each class has one clear responsibility
+3. **Interface Segregation**: Clean interfaces for repository and service layers
+4. **Immutable Domain**: Domain models are immutable data classes
+5. **Fail Fast**: Input validation at API boundaries
+6. **Separation of Concerns**: Clear boundaries between layers
+
+## 🔧 Technology Stack
+
+- **Language**: Kotlin 1.9.25
+- **Framework**: Spring Boot 3.5.3
+- **Database**: H2 (in-memory)
+- **ORM**: Spring Data JPA with Hibernate
+- **Testing**: JUnit 5, Mockito, MockMvc
+- **Build**: Gradle 8.14.2 with Kotlin DSL
+- **Java Version**: 17
+
+## 🎯 Next Steps
+
+To extend this application:
+
+1. **Add More Entities**: Follow the same modular structure
+2. **External Database**: Replace H2 with PostgreSQL/MySQL
+3. **Security**: Add Spring Security with JWT authentication
+4. **Documentation**: Integrate OpenAPI/Swagger
+5. **Monitoring**: Enhance Actuator with custom metrics
+6. **Caching**: Add Redis/Caffeine caching layer
+7. **Messaging**: Integrate with RabbitMQ/Kafka
+
+This Spring Boot starter provides a solid foundation for building scalable, maintainable applications following industry best practices.

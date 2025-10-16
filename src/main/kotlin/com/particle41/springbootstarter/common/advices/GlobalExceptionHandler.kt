@@ -1,6 +1,7 @@
-package com.particle41.springbootstarter.common.advice
+package com.particle41.springbootstarter.common.advices
 
-import com.particle41.springbootstarter.modules.user.domain.exception.UserNotFoundException
+import com.particle41.springbootstarter.common.exceptions.DomainException
+import com.particle41.springbootstarter.common.exceptions.DomainNotFoundException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -10,9 +11,14 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 @RestControllerAdvice
 class GlobalExceptionHandler {
 
-    @ExceptionHandler(UserNotFoundException::class)
-    fun handleNotFound(ex: UserNotFoundException): ResponseEntity<String> {
+    @ExceptionHandler(DomainNotFoundException::class)
+    fun handleDomainNotFound(ex: DomainNotFoundException): ResponseEntity<String> {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.message)
+    }
+
+    @ExceptionHandler(DomainException::class)
+    fun handleDomainException(ex: DomainException): ResponseEntity<String> {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.message)
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)

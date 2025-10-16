@@ -8,13 +8,17 @@ object UserMapper {
         User(
             id = entity.id,
             name = entity.name,
-            email = entity.email
+            email = entity.email,
+            createdAt = entity.createdAt,
+            updatedAt = entity.updatedAt
         )
 
     fun toEntity(domain: User): UserEntity =
         UserEntity(
             id = domain.id,
             name = domain.name,
-            email = domain.email
+            email = domain.email,
+            createdAt = domain.createdAt,
+            updatedAt = domain.updatedAt
         )
 }

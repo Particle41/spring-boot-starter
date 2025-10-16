@@ -8,6 +8,7 @@ import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.util.UUID
 
 @RestController
 @RequestMapping("/api/users")
@@ -24,7 +25,7 @@ class UserController(
     }
 
     @GetMapping("/{id}")
-    fun fetchOne(@PathVariable id: Long): ResponseEntity<UserResponse> {
+    fun fetchOne(@PathVariable id: UUID): ResponseEntity<UserResponse> {
         val user = userService.fetchOne(id)
         return ResponseEntity.ok(userMapper.toResponse(user))
     }
@@ -37,7 +38,7 @@ class UserController(
 
     @PutMapping("/{id}")
     fun update(
-        @PathVariable id: Long,
+        @PathVariable id: UUID,
         @Valid @RequestBody request: UserRequest
     ): ResponseEntity<UserResponse> {
         val user = userMapper.toDomain(request)
@@ -46,7 +47,7 @@ class UserController(
     }
 
     @DeleteMapping("/{id}")
-    fun delete(@PathVariable id: Long): ResponseEntity<Void> {
+    fun delete(@PathVariable id: UUID): ResponseEntity<Void> {
         userService.delete(id)
         return ResponseEntity.noContent().build()
     }

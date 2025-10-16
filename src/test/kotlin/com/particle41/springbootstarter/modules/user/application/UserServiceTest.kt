@@ -11,6 +11,8 @@ import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import java.time.LocalDateTime
+import java.util.UUID
 
 class UserServiceTest {
 
@@ -21,34 +23,43 @@ class UserServiceTest {
     lateinit var userService: UserServiceImpl
 
     private lateinit var sampleUser: User
+    private val sampleId = UUID.randomUUID()
+    private val now = LocalDateTime.now()
 
     @BeforeEach
     fun setUp() {
         MockitoAnnotations.openMocks(this)
-        sampleUser = User(id = 1L, name = "John Doe", email = "john@example.com")
+        sampleUser = User(
+            id = sampleId, 
+            name = "John Doe", 
+            email = "john@example.com",
+            createdAt = now,
+            updatedAt = now
+        )
     }
 
     @Test
     fun `fetchOne returns user when found`() {
-        whenever(userRepository.findById(1L)).thenReturn(sampleUser)
+        whenever(userRepository.findById(sampleId)).thenReturn(sampleUser)
 
-        val result = userService.fetchOne(1L)
+        val result = userService.fetchOne(sampleId)
 
         assertEquals(sampleUser, result)
     }
 
     @Test
     fun `fetchOne throws UserNotFoundException when not found`() {
-        whenever(userRepository.findById(1L)).thenReturn(null)
+        whenever(userRepository.findById(sampleId)).thenReturn(null)
 
         assertThrows(UserNotFoundException::class.java) {
-            userService.fetchOne(1L)
+            userService.fetchOne(sampleId)
         }
     }
 
     @Test
     fun `fetchAll returns list of users`() {
-        val users = listOf(sampleUser, sampleUser.copy(id = 2L))
+        val secondUser = sampleUser.copy(id = UUID.randomUUID())
+        val users = listOf(sampleUser, secondUser)
         whenever(userRepository.findAll()).thenReturn(users)
 
         val result = userService.fetchAll()
@@ -70,10 +81,17 @@ class UserServiceTest {
     @Test
     fun `update modifies and saves user`() {
         val updatedUser = sampleUser.copy(name = "Jane Doe")
-        whenever(userRepository.findById(1L)).thenReturn(sampleUser)
+        whenever(userRepository.findById(sampleId)).thenReturn(sampleUser)
         whenever(userRepository.save(any())).thenReturn(updatedUser)
 
-        val result = userService.update(1L, User(name = "Jane Doe", email = "john@example.com"))
+        val inputUser = User(
+            id = UUID.randomUUID(), 
+            name = "Jane Doe", 
+            email = "john@example.com",
+            createdAt = now,
+            updatedAt = now
+        )
+        val result = userService.update(sampleId, inputUser)
 
         assertEquals("Jane Doe", result.name)
         assertEquals(sampleUser.email, result.email)
@@ -82,28 +100,28 @@ class UserServiceTest {
 
     @Test
     fun `update throws UserNotFoundException if user not found`() {
-        whenever(userRepository.findById(1L)).thenReturn(null)
+        whenever(userRepository.findById(sampleId)).thenReturn(null)
 
         assertThrows(UserNotFoundException::class.java) {
-            userService.update(1L, sampleUser)
+            userService.update(sampleId, sampleUser)
         }
     }
 
     @Test
     fun `delete removes user`() {
-        whenever(userRepository.findById(1L)).thenReturn(sampleUser)
+        whenever(userRepository.findById(sampleId)).thenReturn(sampleUser)
 
-        userService.delete(1L)
+        userService.delete(sampleId)
 
-        verify(userRepository).delete(1L)
+        verify(userRepository).delete(sampleId)
     }
 
     @Test
     fun `delete throws UserNotFoundException if user not found`() {
-        whenever(userRepository.findById(1L)).thenReturn(null)
+        whenever(userRepository.findById(sampleId)).thenReturn(null)
 
         assertThrows(UserNotFoundException::class.java) {
-            userService.delete(1L)
+            userService.delete(sampleId)
         }
     }
 }

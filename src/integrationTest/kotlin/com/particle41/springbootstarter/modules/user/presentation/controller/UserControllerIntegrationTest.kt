@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.LocalDateTime
 import java.util.UUID
 
 @SpringBootTest
@@ -49,7 +50,14 @@ class UserControllerIntegrationTest {
 
     @Test
     fun `GET fetchOne returns user`() {
-        val user = userService.create(User(name = "Bob", email = "bob@example.com"))
+        val now = LocalDateTime.now()
+        val user = userService.create(User(
+            id = UUID.randomUUID(),
+            name = "Bob", 
+            email = "bob@example.com",
+            createdAt = now,
+            updatedAt = now
+        ))
 
         mockMvc.perform(get("/api/users/${user.id}"))
             .andExpect(status().isOk)
@@ -59,7 +67,14 @@ class UserControllerIntegrationTest {
 
     @Test
     fun `GET fetchAll returns list of users`() {
-        userService.create(User(name = "Charlie", email = "charlie@example.com"))
+        val now = LocalDateTime.now()
+        userService.create(User(
+            id = UUID.randomUUID(),
+            name = "Charlie", 
+            email = "charlie@example.com",
+            createdAt = now,
+            updatedAt = now
+        ))
 
         mockMvc.perform(get("/api/users"))
             .andExpect(status().isOk)
@@ -68,7 +83,14 @@ class UserControllerIntegrationTest {
 
     @Test
     fun `PUT update user returns updated user`() {
-        val user = userService.create(User(name = "Dave", email = "dave@example.com"))
+        val now = LocalDateTime.now()
+        val user = userService.create(User(
+            id = UUID.randomUUID(),
+            name = "Dave", 
+            email = "dave@example.com",
+            createdAt = now,
+            updatedAt = now
+        ))
         val request = UserRequest(name = "David", email = "david@example.com")
         val json = objectMapper.writeValueAsString(request)
 
@@ -84,7 +106,14 @@ class UserControllerIntegrationTest {
 
     @Test
     fun `DELETE user returns no content`() {
-        val user = userService.create(User(name = "Eve", email = "eve@example.com"))
+        val now = LocalDateTime.now()
+        val user = userService.create(User(
+            id = UUID.randomUUID(),
+            name = "Eve", 
+            email = "eve@example.com",
+            createdAt = now,
+            updatedAt = now
+        ))
 
         mockMvc.perform(delete("/api/users/${user.id}"))
             .andExpect(status().isNoContent)
@@ -120,14 +149,22 @@ class UserControllerIntegrationTest {
 
     @Test
     fun `GET fetchOne with non-existing id returns 404`() {
-        mockMvc.perform(get("/api/users/9999"))
+        val nonExistentId = UUID.randomUUID()
+        mockMvc.perform(get("/api/users/${nonExistentId}"))
             .andExpect(status().isNotFound)
     }
 
     @Test
     fun `PUT update user with blank fields returns 400`() {
+        val now = LocalDateTime.now()
         val email = "bob-${UUID.randomUUID()}@example.com"
-        val user = userService.create(User(name = "Bob", email = email))
+        val user = userService.create(User(
+            id = UUID.randomUUID(),
+            name = "Bob", 
+            email = email,
+            createdAt = now,
+            updatedAt = now
+        ))
         val request = UserRequest(name = "", email = "")
         val json = objectMapper.writeValueAsString(request)
 
@@ -143,7 +180,8 @@ class UserControllerIntegrationTest {
 
     @Test
     fun `DELETE non-existing user returns 404`() {
-        mockMvc.perform(delete("/api/users/9999"))
+        val nonExistentId = UUID.randomUUID()
+        mockMvc.perform(delete("/api/users/${nonExistentId}"))
             .andExpect(status().isNotFound)
     }
 
