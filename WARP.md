@@ -17,40 +17,43 @@ This application implements **Clean Architecture** with the following layers:
 src/
 ├── main/kotlin/com/particle41/springbootstarter/
 │   ├── AppApplication.kt                              # Main Spring Boot application
-│   ├── common/
+│   ├── application/user/
+│   │   ├── UserService.kt                            # Service interface
+│   │   └── UserServiceImpl.kt                        # Service implementation
+│   ├── domain/user/
+│   │   ├── model/User.kt                             # Core domain model
+│   │   ├── repository/UserRepository.kt              # Repository interface
+│   │   └── exception/UserNotFoundException.kt         # Domain-specific exceptions
+│   ├── infrastructure/user/
+│   │   ├── entity/UserEntity.kt                      # JPA entity
+│   │   ├── mapper/UserMapper.kt                      # Infrastructure mapper
+│   │   └── repository/
+│   │       ├── SpringDataUserRepository.kt           # Spring Data JPA interface
+│   │       └── UserRepositoryImpl.kt                 # Repository implementation
+│   └── presentation/user/
+│   │   ├── controller/UserController.kt              # REST controller
+│   │   ├── dto/
+│   │   │   ├── UserRequest.kt                        # Input DTO with validation
+│   │   │   └── UserResponse.kt                       # Output DTO
+│   │   └── mapper/UserMapper.kt                      # Presentation mapper
+│   ├── shared/
 │   │   ├── advices/GlobalExceptionHandler.kt         # Global error handling
 │   │   └── exceptions/
 │   │       ├── DomainException.kt                    # Base domain exception
 │   │       └── DomainNotFoundException.kt            # Base not found exception
-│   └── modules/user/
-│       ├── application/
-│       │   ├── UserService.kt                        # Service interface
-│       │   └── UserServiceImpl.kt                    # Service implementation
-│       ├── domain/
-│       │   ├── model/User.kt                         # Core domain model
-│       │   ├── repository/UserRepository.kt          # Repository interface
-│       │   └── exception/UserNotFoundException.kt     # Domain-specific exceptions
-│       ├── infrastructure/
-│       │   ├── entity/UserEntity.kt                  # JPA entity
-│       │   ├── mapper/UserMapper.kt                  # Infrastructure mapper
-│       │   └── repository/
-│       │       ├── SpringDataUserRepository.kt       # Spring Data JPA interface
-│       │       └── UserRepositoryImpl.kt             # Repository implementation
-│       └── presentation/
-│           ├── controller/UserController.kt          # REST controller
-│           ├── dto/
-│           │   ├── UserRequest.kt                    # Input DTO with validation
-│           │   └── UserResponse.kt                   # Output DTO
-│           └── mapper/UserMapper.kt                  # Presentation mapper
-├── test/kotlin/                                      # Unit tests
-└── integrationTest/kotlin/                           # Integration tests
+├── test/kotlin/com/particle41/springbootstarter/
+│   ├── AppApplicationTests.kt                        # Application tests
+│   └── application/user/UserServiceTest.kt           # Unit tests
+└── integrationTest/kotlin/com/particle41/springbootstarter/
+    └── presentation/user/controller/
+        └── UserControllerIntegrationTest.kt          # Integration tests
 ```
 
 ## 📊 Core Components
 
 ### Domain Model
 
-```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/modules/user/domain/model/User.kt start=6
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/domain/user/model/User.kt start=6
 data class User(
     val id: UUID,
     val name: String,
@@ -67,7 +70,7 @@ data class User(
 
 ### REST API Controller
 
-```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/modules/user/presentation/controller/UserController.kt start=20
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/presentation/user/controller/UserController.kt start=20
 @PostMapping
 fun create(@Valid @RequestBody request: UserRequest): ResponseEntity<UserResponse> {
     val user = userMapper.toDomain(request)
@@ -85,7 +88,7 @@ fun create(@Valid @RequestBody request: UserRequest): ResponseEntity<UserRespons
 
 ### Business Service Layer
 
-```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/modules/user/application/UserServiceImpl.kt start=16
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/application/user/UserServiceImpl.kt start=16
 override fun fetchOne(id: UUID): User =
     userRepository.findById(id) ?: throw UserNotFoundException(id.toString())
 
@@ -108,7 +111,7 @@ override fun update(id: UUID, user: User): User {
 
 ### Data Validation
 
-```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/modules/user/presentation/dto/UserRequest.kt start=6
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/presentation/user/dto/UserRequest.kt start=6
 data class UserRequest(
     @field:NotBlank(message = "Name must not be blank")
     val name: String,
@@ -145,7 +148,7 @@ spring.h2.console.path=/h2-console
 
 ### JPA Entity
 
-```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/modules/user/infrastructure/entity/UserEntity.kt start=16
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/infrastructure/user/entity/UserEntity.kt start=16
 @Entity
 @Table(name = "users")
 data class UserEntity(
@@ -207,7 +210,7 @@ java {
 
 ### Unit Tests
 
-```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/test/kotlin/com/particle41/springbootstarter/modules/user/application/UserServiceTest.kt start=41
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/test/kotlin/com/particle41/springbootstarter/application/user/UserServiceTest.kt start=41
 @Test
 fun `fetchOne returns user when found`() {
     whenever(userRepository.findById(sampleId)).thenReturn(sampleUser)
@@ -235,7 +238,7 @@ fun `fetchOne throws UserNotFoundException when not found`() {
 
 ### Integration Tests
 
-```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/integrationTest/kotlin/com/particle41/springbootstarter/modules/user/presentation/controller/UserControllerIntegrationTest.kt start=36
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/integrationTest/kotlin/com/particle41/springbootstarter/presentation/user/controller/UserControllerIntegrationTest.kt start=36
 @Test
 fun `POST create user returns 201`() {
     val request = UserRequest(name = "Alice", email = "alice@example.com")
@@ -306,14 +309,14 @@ tasks.register<Test>("integrationTest") {
 
 ### Exception Hierarchy
 
-```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/common/exceptions/DomainException.kt start=7
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/shared/exceptions/DomainException.kt start=7
 abstract class DomainException(
     message: String,
     cause: Throwable? = null
 ) : RuntimeException(message, cause)
 ```
 
-```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/common/exceptions/DomainNotFoundException.kt start=6
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/shared/exceptions/DomainNotFoundException.kt start=6
 abstract class DomainNotFoundException(
     entityName: String,
     identifier: String,
@@ -323,7 +326,7 @@ abstract class DomainNotFoundException(
 
 ### Global Exception Handler
 
-```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/common/advices/GlobalExceptionHandler.kt start=14
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/shared/advices/GlobalExceptionHandler.kt start=14
 @ExceptionHandler(DomainNotFoundException::class)
 fun handleDomainNotFound(ex: DomainNotFoundException): ResponseEntity<String> {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.message)
