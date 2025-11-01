@@ -1,5 +1,7 @@
 package com.particle41.springbootstarter.application.user
 
+import com.particle41.springbootstarter.domain.pagination.Page
+import com.particle41.springbootstarter.domain.pagination.Pageable
 import com.particle41.springbootstarter.domain.user.exception.UserNotFoundException
 import com.particle41.springbootstarter.domain.user.model.User
 import com.particle41.springbootstarter.domain.user.repository.UserRepository
@@ -67,6 +69,60 @@ class UserServiceTest {
 
         Assertions.assertEquals(2, result.size)
         Assertions.assertEquals(users, result)
+    }
+
+    @Test
+    fun `fetchAll with pageable returns page of users`() {
+        val secondUser = sampleUser.copy(id = UUID.randomUUID())
+        val users = listOf(sampleUser, secondUser)
+        val pageable = Pageable(page = 0, size = 10)
+        val page = Page(
+            content = users,
+            pageNumber = 0,
+            pageSize = 10,
+            totalElements = 2L,
+            totalPages = 1,
+            isFirst = true,
+            isLast = true,
+            hasNext = false,
+            hasPrevious = false
+        )
+        whenever(userRepository.findAll(pageable)).thenReturn(page)
+
+        val result = userService.fetchAll(pageable)
+
+        Assertions.assertEquals(2, result.content.size)
+        Assertions.assertEquals(users, result.content)
+        Assertions.assertEquals(0, result.pageNumber)
+        Assertions.assertEquals(10, result.pageSize)
+        Assertions.assertEquals(2L, result.totalElements)
+        Assertions.assertEquals(1, result.totalPages)
+        Assertions.assertTrue(result.isFirst)
+        Assertions.assertTrue(result.isLast)
+        Assertions.assertFalse(result.hasNext)
+        Assertions.assertFalse(result.hasPrevious)
+    }
+
+    @Test
+    fun `fetchAll with pageable returns empty page when no users`() {
+        val pageable = Pageable(page = 0, size = 10)
+        val emptyPage = Page<User>(
+            content = emptyList(),
+            pageNumber = 0,
+            pageSize = 10,
+            totalElements = 0L,
+            totalPages = 0,
+            isFirst = true,
+            isLast = true,
+            hasNext = false,
+            hasPrevious = false
+        )
+        whenever(userRepository.findAll(pageable)).thenReturn(emptyPage)
+
+        val result = userService.fetchAll(pageable)
+
+        Assertions.assertEquals(0, result.content.size)
+        Assertions.assertEquals(0L, result.totalElements)
     }
 
     @Test

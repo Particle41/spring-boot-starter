@@ -1,10 +1,13 @@
 package com.particle41.springbootstarter.infrastructure.user.repository
 
+import com.particle41.springbootstarter.domain.pagination.Page
+import com.particle41.springbootstarter.domain.pagination.Pageable
 import com.particle41.springbootstarter.domain.user.model.User
 import com.particle41.springbootstarter.domain.user.repository.UserRepository
+import com.particle41.springbootstarter.infrastructure.pagination.mapper.PageableMapper
 import com.particle41.springbootstarter.infrastructure.user.mapper.UserMapper
 import org.springframework.stereotype.Repository
-import java.util.UUID
+import java.util.*
 
 @Repository
 class UserRepositoryImpl(
@@ -22,6 +25,12 @@ class UserRepositoryImpl(
 
     override fun findAll(): List<User> =
         springDataRepo.findAll().map(UserMapper::toDomain)
+
+    override fun findAll(pageable: Pageable): Page<User> {
+        val springPageable = PageableMapper.toSpringPageable(pageable)
+        val springPage = springDataRepo.findAll(springPageable)
+        return PageableMapper.toDomainPage(springPage, UserMapper::toDomain)
+    }
 
     override fun delete(id: UUID) =
         springDataRepo.deleteById(id)

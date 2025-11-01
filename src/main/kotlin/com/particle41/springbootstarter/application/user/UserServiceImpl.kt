@@ -1,5 +1,7 @@
 package com.particle41.springbootstarter.application.user
 
+import com.particle41.springbootstarter.domain.pagination.Page
+import com.particle41.springbootstarter.domain.pagination.Pageable
 import com.particle41.springbootstarter.domain.user.model.User
 import com.particle41.springbootstarter.domain.user.repository.UserRepository
 import com.particle41.springbootstarter.domain.user.exception.UserNotFoundException
@@ -17,6 +19,9 @@ class UserServiceImpl(
 
     override fun fetchAll(): List<User> =
         userRepository.findAll()
+
+    override fun fetchAll(pageable: Pageable): Page<User> =
+        userRepository.findAll(pageable)
 
     @Transactional
     override fun create(user: User): User =

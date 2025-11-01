@@ -40,7 +40,7 @@ class UserControllerIntegrationTest {
         val json = objectMapper.writeValueAsString(request)
 
         mockMvc.perform(
-            post("/api/users")
+            post("/api/v1/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json)
         )
@@ -60,7 +60,7 @@ class UserControllerIntegrationTest {
             updatedAt = now
         ))
 
-        mockMvc.perform(get("/api/users/${user.id}"))
+        mockMvc.perform(get("/api/v1/users/${user.id}"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.name").value("Bob"))
             .andExpect(jsonPath("$.email").value("bob@example.com"))
@@ -77,9 +77,12 @@ class UserControllerIntegrationTest {
             updatedAt = now
         ))
 
-        mockMvc.perform(get("/api/users"))
+        mockMvc.perform(get("/api/v1/users?page=0&size=10"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$[*].name").value(Matchers.hasItems("Charlie", "Bob", "Alice")))
+            .andExpect(jsonPath("$.content[*].name").value(Matchers.hasItems("Charlie", "Bob", "Alice")))
+            .andExpect(jsonPath("$.pageNumber").value(0))
+            .andExpect(jsonPath("$.pageSize").value(10))
+            .andExpect(jsonPath("$.totalElements").isNumber)
     }
 
     @Test
@@ -96,7 +99,7 @@ class UserControllerIntegrationTest {
         val json = objectMapper.writeValueAsString(request)
 
         mockMvc.perform(
-            put("/api/users/${user.id}")
+            put("/api/v1/users/${user.id}")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json)
         )
@@ -116,7 +119,7 @@ class UserControllerIntegrationTest {
             updatedAt = now
         ))
 
-        mockMvc.perform(delete("/api/users/${user.id}"))
+        mockMvc.perform(delete("/api/v1/users/${user.id}"))
             .andExpect(status().isNoContent)
     }
 
@@ -126,7 +129,7 @@ class UserControllerIntegrationTest {
         val json = objectMapper.writeValueAsString(request)
 
         mockMvc.perform(
-            post("/api/users")
+            post("/api/v1/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json)
         )
@@ -140,7 +143,7 @@ class UserControllerIntegrationTest {
         val json = objectMapper.writeValueAsString(request)
 
         mockMvc.perform(
-            post("/api/users")
+            post("/api/v1/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json)
         )
@@ -151,7 +154,7 @@ class UserControllerIntegrationTest {
     @Test
     fun `GET fetchOne with non-existing id returns 404`() {
         val nonExistentId = UUID.randomUUID()
-        mockMvc.perform(get("/api/users/${nonExistentId}"))
+        mockMvc.perform(get("/api/v1/users/${nonExistentId}"))
             .andExpect(status().isNotFound)
     }
 
@@ -170,7 +173,7 @@ class UserControllerIntegrationTest {
         val json = objectMapper.writeValueAsString(request)
 
         mockMvc.perform(
-            put("/api/users/${user.id}")
+            put("/api/v1/users/${user.id}")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json)
         )
@@ -182,7 +185,7 @@ class UserControllerIntegrationTest {
     @Test
     fun `DELETE non-existing user returns 404`() {
         val nonExistentId = UUID.randomUUID()
-        mockMvc.perform(delete("/api/users/${nonExistentId}"))
+        mockMvc.perform(delete("/api/v1/users/${nonExistentId}"))
             .andExpect(status().isNotFound)
     }
 

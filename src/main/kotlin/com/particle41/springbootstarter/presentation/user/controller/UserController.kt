@@ -1,9 +1,13 @@
 package com.particle41.springbootstarter.presentation.user.controller
 
 import com.particle41.springbootstarter.application.user.UserService
+import com.particle41.springbootstarter.presentation.pagination.dto.PageRequest
+import com.particle41.springbootstarter.presentation.pagination.dto.PageResponse
+import com.particle41.springbootstarter.presentation.pagination.mapper.PageableMapper
 import com.particle41.springbootstarter.presentation.user.dto.UserRequest
 import com.particle41.springbootstarter.presentation.user.dto.UserResponse
 import com.particle41.springbootstarter.presentation.user.mapper.UserMapper
+import com.particle41.springbootstarter.shared.annotations.ApiVersion
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -11,7 +15,8 @@ import org.springframework.web.bind.annotation.*
 import java.util.UUID
 
 @RestController
-@RequestMapping("/api/users")
+@ApiVersion(1)
+@RequestMapping("/users")
 class UserController(
     private val userService: UserService,
     private val userMapper: UserMapper
@@ -31,9 +36,15 @@ class UserController(
     }
 
     @GetMapping
-    fun fetchAll(): ResponseEntity<List<UserResponse>> {
-        val users = userService.fetchAll()
-        return ResponseEntity.ok(users.map(userMapper::toResponse))
+    fun fetchAll(
+        @RequestParam page: Int,
+        @RequestParam size: Int
+    ): ResponseEntity<PageResponse<UserResponse>> {
+        val pageRequest = PageRequest(page = page, size = size)
+        val pageable = PageableMapper.toPageable(pageRequest)
+        val userPage = userService.fetchAll(pageable)
+        val response = PageableMapper.toResponse(userPage, userMapper::toResponse)
+        return ResponseEntity.ok(response)
     }
 
     @PutMapping("/{id}")

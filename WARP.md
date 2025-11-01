@@ -20,27 +20,41 @@ src/
 │   ├── application/user/
 │   │   ├── UserService.kt                            # Service interface
 │   │   └── UserServiceImpl.kt                        # Service implementation
-│   ├── domain/user/
-│   │   ├── model/User.kt                             # Core domain model
-│   │   ├── repository/UserRepository.kt              # Repository interface
-│   │   └── exception/UserNotFoundException.kt         # Domain-specific exceptions
-│   ├── infrastructure/user/
-│   │   ├── entity/UserEntity.kt                      # JPA entity
-│   │   ├── mapper/UserMapper.kt                      # Infrastructure mapper
-│   │   └── repository/
-│   │       ├── SpringDataUserRepository.kt           # Spring Data JPA interface
-│   │       └── UserRepositoryImpl.kt                 # Repository implementation
-│   └── presentation/user/
-│   │   ├── controller/UserController.kt              # REST controller
-│   │   ├── dto/
-│   │   │   ├── UserRequest.kt                        # Input DTO with validation
-│   │   │   └── UserResponse.kt                       # Output DTO
-│   │   └── mapper/UserMapper.kt                      # Presentation mapper
-│   ├── shared/
-│   │   ├── advices/GlobalExceptionHandler.kt         # Global error handling
-│   │   └── exceptions/
-│   │       ├── DomainException.kt                    # Base domain exception
-│   │       └── DomainNotFoundException.kt            # Base not found exception
+│   ├── domain/
+│   │   ├── pagination/                               # Pagination domain models
+│   │   │   ├── Pageable.kt                           # Domain pageable
+│   │   │   └── Page.kt                               # Domain page result
+│   │   └── user/
+│   │       ├── model/User.kt                         # Core domain model
+│   │       ├── repository/UserRepository.kt          # Repository interface
+│   │       └── exception/UserNotFoundException.kt    # Domain-specific exceptions
+│   ├── infrastructure/
+│   │   ├── pagination/mapper/PageableMapper.kt       # Spring pagination mapper
+│   │   └── user/
+│   │       ├── entity/UserEntity.kt                  # JPA entity
+│   │       ├── mapper/UserMapper.kt                  # Infrastructure mapper
+│   │       └── repository/
+│   │           ├── SpringDataUserRepository.kt       # Spring Data JPA interface
+│   │           └── UserRepositoryImpl.kt             # Repository implementation
+│   ├── presentation/
+│   │   ├── pagination/                               # Pagination DTOs
+│   │   │   ├── dto/
+│   │   │   │   ├── PageRequest.kt                    # Pagination request DTO
+│   │   │   │   └── PageResponse.kt                   # Pagination response DTO
+│   │   │   └── mapper/PageableMapper.kt              # Presentation pagination mapper
+│   │   └── user/
+│   │       ├── controller/UserController.kt          # REST controller
+│   │       ├── dto/
+│   │       │   ├── UserRequest.kt                    # Input DTO with validation
+│   │       │   └── UserResponse.kt                   # Output DTO
+│   │       └── mapper/UserMapper.kt                  # Presentation mapper
+│   └── shared/
+│       ├── annotations/ApiVersion.kt                 # API versioning annotation
+│       ├── config/ApiVersionConfig.kt                # API versioning configuration
+│       ├── advices/GlobalExceptionHandler.kt         # Global error handling
+│       └── exceptions/
+│           ├── DomainException.kt                    # Base domain exception
+│           └── DomainNotFoundException.kt            # Base not found exception
 ├── test/kotlin/com/particle41/springbootstarter/
 │   ├── AppApplicationTests.kt                        # Application tests
 │   └── application/user/UserServiceTest.kt           # Unit tests
@@ -80,11 +94,11 @@ fun create(@Valid @RequestBody request: UserRequest): ResponseEntity<UserRespons
 ```
 
 **API Endpoints:**
-- `POST /api/users` - Create new user
-- `GET /api/users/{id}` - Fetch user by ID
-- `GET /api/users` - Fetch all users
-- `PUT /api/users/{id}` - Update existing user
-- `DELETE /api/users/{id}` - Delete user
+- `POST /api/v1/users` - Create new user
+- `GET /api/v1/users/{id}` - Fetch user by ID
+- `GET /api/v1/users?page=0&size=10` - Fetch paginated users
+- `PUT /api/v1/users/{id}` - Update existing user
+- `DELETE /api/v1/users/{id}` - Delete user
 
 ### Business Service Layer
 
@@ -125,6 +139,289 @@ data class UserRequest(
 **Validation Rules:**
 - Name: Cannot be blank
 - Email: Must be valid email format and not blank
+
+## 🔢 API Versioning
+
+This application uses a custom annotation-based approach for API versioning, allowing clean and maintainable version management.
+
+### Custom @ApiVersion Annotation
+
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/shared/annotations/ApiVersion.kt start=1
+@Target(AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.RUNTIME)
+@MustBeDocumented
+annotation class ApiVersion(val value: Int)
+```
+
+### Usage in Controllers
+
+```kotlin
+@RestController
+@ApiVersion(1)
+@RequestMapping("/users")
+class UserController(
+    private val userService: UserService,
+    private val userMapper: UserMapper
+) {
+    // Controller methods
+}
+```
+
+**How it Works:**
+- Add `@ApiVersion(1)` to any controller class
+- All endpoints in that controller automatically get prefixed with `/api/v{version}`
+- Example: `@RequestMapping("/users")` with `@ApiVersion(1)` becomes `/api/v1/users`
+
+### Custom Request Mapping Handler
+
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/shared/config/ApiVersionConfig.kt start=14
+@Bean
+fun apiVersionRequestMappingHandlerMapping(): RequestMappingHandlerMapping {
+    return object : RequestMappingHandlerMapping() {
+        override fun getMappingForMethod(method: Method, handlerType: Class<*>): RequestMappingInfo? {
+            val info = super.getMappingForMethod(method, handlerType) ?: return null
+            val apiVersion = AnnotatedElementUtils.findMergedAnnotation(handlerType, ApiVersion::class.java)
+                ?: return info
+            val versionPath = "/api/v${apiVersion.value}"
+            val versionInfo = RequestMappingInfo.paths(versionPath).build()
+            return versionInfo.combine(info)
+        }
+    }.apply {
+        order = 0
+    }
+}
+```
+
+**Benefits:**
+- Clean, declarative versioning at the controller level
+- No need to repeat `/api/v1` in every `@RequestMapping`
+- Easy to create new API versions by changing the annotation value
+- Type-safe with compile-time checking
+
+## 📄 Pagination
+
+The application implements a clean, framework-independent pagination system following Clean Architecture principles.
+
+### Pagination Architecture
+
+#### Domain Layer (Framework-Independent)
+
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/domain/pagination/Pageable.kt start=3
+data class Pageable(
+    val page: Int,
+    val size: Int,
+    val sort: Sort? = null
+) {
+    init {
+        require(page >= 0) { "Page index must not be less than zero" }
+        require(size > 0) { "Page size must be greater than zero" }
+    }
+}
+
+data class Sort(
+    val property: String,
+    val direction: Direction = Direction.ASC
+)
+
+enum class Direction {
+    ASC, DESC
+}
+```
+
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/domain/pagination/Page.kt start=3
+data class Page<T>(
+    val content: List<T>,
+    val pageNumber: Int,
+    val pageSize: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+    val isFirst: Boolean,
+    val isLast: Boolean,
+    val hasNext: Boolean,
+    val hasPrevious: Boolean
+)
+```
+
+#### Presentation Layer DTOs
+
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/presentation/pagination/dto/PageRequest.kt start=3
+data class PageRequest(
+    val page: Int,
+    val size: Int
+)
+```
+
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/presentation/pagination/dto/PageResponse.kt start=3
+data class PageResponse<T>(
+    val content: List<T>,
+    val pageNumber: Int,
+    val pageSize: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+    val isFirst: Boolean,
+    val isLast: Boolean,
+    val hasNext: Boolean,
+    val hasPrevious: Boolean
+)
+```
+
+### Pagination Flow
+
+```
+HTTP Request: GET /api/v1/users?page=0&size=10
+  ↓
+  UserController receives page & size parameters
+  ↓
+  Creates PageRequest(page=0, size=10)
+  ↓
+  PageableMapper.toPageable() → Pageable (domain)
+  ↓
+  UserService.fetchAll(pageable)
+  ↓
+  UserRepository.findAll(pageable)
+  ↓
+  PageableMapper.toSpringPageable() → Spring Pageable
+  ↓
+  Spring Data JPA executes paginated query
+  ↓
+  PageableMapper.toDomainPage() → Page<User> (domain)
+  ↓
+  PageableMapper.toResponse() → PageResponse<UserResponse>
+  ↓
+HTTP Response: JSON with paginated data
+```
+
+### Controller Usage
+
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/presentation/user/controller/UserController.kt start=38
+@GetMapping
+fun fetchAll(
+    @RequestParam page: Int,
+    @RequestParam size: Int
+): ResponseEntity<PageResponse<UserResponse>> {
+    val pageRequest = PageRequest(page = page, size = size)
+    val pageable = PageableMapper.toPageable(pageRequest)
+    val userPage = userService.fetchAll(pageable)
+    val response = PageableMapper.toResponse(userPage, userMapper::toResponse)
+    return ResponseEntity.ok(response)
+}
+```
+
+### Example API Request/Response
+
+**Request:**
+```bash
+GET /api/v1/users?page=0&size=10
+```
+
+**Response:**
+```json
+{
+  "content": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "createdAt": "2025-01-01T10:00:00",
+      "updatedAt": "2025-01-01T10:00:00"
+    }
+  ],
+  "pageNumber": 0,
+  "pageSize": 10,
+  "totalElements": 1,
+  "totalPages": 1,
+  "isFirst": true,
+  "isLast": true,
+  "hasNext": false,
+  "hasPrevious": false
+}
+```
+
+### Pagination Mappers
+
+#### Presentation Layer Mapper
+
+```kotlin
+object PageableMapper {
+    fun toPageable(pageRequest: PageRequest): Pageable {
+        return Pageable(
+            page = pageRequest.page,
+            size = pageRequest.size
+        )
+    }
+
+    fun <T, R> toResponse(page: Page<T>, contentMapper: (T) -> R): PageResponse<R> {
+        return PageResponse(
+            content = page.content.map(contentMapper),
+            pageNumber = page.pageNumber,
+            pageSize = page.pageSize,
+            totalElements = page.totalElements,
+            totalPages = page.totalPages,
+            isFirst = page.isFirst,
+            isLast = page.isLast,
+            hasNext = page.hasNext,
+            hasPrevious = page.hasPrevious
+        )
+    }
+}
+```
+
+#### Infrastructure Layer Mapper
+
+```kotlin
+object PageableMapper {
+    fun toSpringPageable(pageable: DomainPageable): SpringPageable {
+        val sort = pageable.sort?.let {
+            val direction = if (it.direction == Direction.ASC) {
+                SpringSort.Direction.ASC
+            } else {
+                SpringSort.Direction.DESC
+            }
+            SpringSort.by(direction, it.property)
+        } ?: SpringSort.unsorted()
+
+        return org.springframework.data.domain.PageRequest.of(
+            pageable.page,
+            pageable.size,
+            sort
+        )
+    }
+
+    fun <T, R> toDomainPage(
+        springPage: org.springframework.data.domain.Page<T>,
+        contentMapper: (T) -> R
+    ): Page<R> {
+        return Page(
+            content = springPage.content.map(contentMapper),
+            pageNumber = springPage.number,
+            pageSize = springPage.size,
+            totalElements = springPage.totalElements,
+            totalPages = springPage.totalPages,
+            isFirst = springPage.isFirst,
+            isLast = springPage.isLast,
+            hasNext = springPage.hasNext(),
+            hasPrevious = springPage.hasPrevious()
+        )
+    }
+}
+```
+
+### Repository Implementation
+
+```kotlin path=/Users/aniruddh/Documents/projects/springboot/src/spring-boot-starter/src/main/kotlin/com/particle41/springbootstarter/infrastructure/user/repository/UserRepositoryImpl.kt start=29
+override fun findAll(pageable: Pageable): Page<User> {
+    val springPageable = PageableMapper.toSpringPageable(pageable)
+    val springPage = springDataRepo.findAll(springPageable)
+    return PageableMapper.toDomainPage(springPage, UserMapper::toDomain)
+}
+```
+
+**Key Benefits:**
+- **Framework Independence**: Domain layer uses its own `Pageable` and `Page` types
+- **Clean Separation**: Each layer has its own pagination models
+- **Testability**: Easy to test with mocked pagination without Spring dependencies
+- **Flexibility**: Can easily swap Spring Data JPA with another framework
+- **Type Safety**: Compile-time checking for all pagination parameters
 
 ## 🗄️ Database Configuration
 
@@ -302,6 +599,9 @@ tasks.register<Test>("integrationTest") {
 ### Development URLs
 
 - **Application**: http://localhost:8080
+- **API Base**: http://localhost:8080/api/v1
+- **Users Endpoint**: http://localhost:8080/api/v1/users
+- **Paginated Users**: http://localhost:8080/api/v1/users?page=0&size=10
 - **H2 Console**: http://localhost:8080/h2-console
 - **Actuator Health**: http://localhost:8080/actuator/health
 
